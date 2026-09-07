@@ -957,10 +957,11 @@ function renderDays(){
     const key=pair[0], o={k:pair[1],_cls:key==='counting'?'hi':''};
     let sum=0;
     dates.forEach(function(d,i){
+      const dayTotal=day(d).length;
       const n=day(d).filter(function(r){return r.cls.key===key;}).length;
-      o['d'+i]=nf(n); sum+=n;
+      o['d'+i]=nf(n)+' ('+p0(pct(n,dayTotal))+')'; sum+=n;
     });
-    o.tot=nf(sum);
+    o.tot=nf(sum)+' ('+p0(pct(sum,tot))+')';
     const first=day(dates[0]).filter(function(r){return r.cls.key===key;}).length;
     const last=day(dates[dates.length-1]).filter(function(r){return r.cls.key===key;}).length;
     const df=last-first;
@@ -1264,6 +1265,34 @@ $('copy').addEventListener('click',function(){
   if(navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done,function(){document.execCommand('copy');done();});
   else {document.execCommand('copy');done();}
 });
+
+// Auto-load every export already sitting in /archive on page start, so the
+// analyser opens pre-filled instead of waiting for a drag-and-drop.
+async function preloadArchive(){
+  let manifest;
+  try{
+    const res=await fetch('archive/manifest.json',{cache:'no-store'});
+    if(!res.ok) return;
+    manifest=await res.json();
+  }catch(ex){ return; } // archive not deployed alongside this page — fine, just skip
+  if(!manifest||!manifest.length) return;
+
+  const bar=$('prog'); bar.classList.add('on'); bar.firstElementChild.style.width='0%';
+  let done=0; const errors=[];
+  for(const item of manifest){
+    try{
+      const fr=await fetch('archive/'+item.file,{cache:'no-store'});
+      if(!fr.ok) throw new Error('HTTP '+fr.status);
+      const buf=await fr.arrayBuffer();
+      addFile(new Uint8Array(buf), item.file.split('/').pop());
+    }catch(ex){ errors.push(item.file+': '+ex.message); }
+    done++; bar.firstElementChild.style.width=(done/manifest.length*100)+'%';
+  }
+  setTimeout(function(){bar.classList.remove('on');},350);
+  if(errors.length) showErr(errors.join('   '));
+  paint();
+}
+preloadArchive();
 </script>
 </body>
 </html>
