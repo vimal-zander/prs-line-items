@@ -3,88 +3,1267 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PRS Line Items Archive</title>
+<title>Zander PRS Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root { color-scheme: light dark; }
-  body {
-    font-family: -apple-system, Helvetica, Arial, sans-serif;
-    max-width: 640px;
-    margin: 60px auto;
-    padding: 0 20px;
-    color: #1c1c1e;
-  }
-  h1 { font-size: 22px; margin-bottom: 4px; }
-  p.sub { color: #666; margin-top: 0; font-size: 14px; }
-  input[type=search] {
-    font-size: 15px; padding: 8px 10px; border: 1px solid #ccc;
-    border-radius: 6px; width: 100%; box-sizing: border-box; margin: 16px 0;
-  }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e5e5; font-size: 14px; }
-  th { color: #666; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
-  tr:hover td { background: #f7f7f8; }
-  a.dl { color: #007aff; text-decoration: none; font-weight: 600; }
-  a.dl:hover { text-decoration: underline; }
-  .size { color: #888; }
-  #empty { display: none; color: #888; padding: 20px 0; text-align: center; }
+:root{
+  --paper:#EEF1F2; --card:#FFFFFF; --ink:#16232B; --ink-soft:#5C6E77;
+  --rule:#D3DADD; --rule-soft:#E7EBED;
+  --teal:#0F6E6E; --teal-tint:#E2EFEE;
+  --amber:#A96A00; --amber-tint:#F8EEDC;
+  --red:#9E2C2C; --red-tint:#F8E8E6;
+  --violet:#5B4B8A; --violet-tint:#ECE9F4;
+  --green:#2E6A46;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:26px 20px 80px}
+h1,h2,h3{letter-spacing:-.015em}
+
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:20px}
+.masthead h1{margin:0;font-size:26px;font-weight:600}
+.masthead p{margin:4px 0 0;color:var(--ink-soft);font-size:13.5px;max-width:60ch}
+.stamp{text-align:right;font-size:13px;color:var(--ink-soft)}
+.stamp b{display:block;font-size:20px;color:var(--ink);font-weight:600}
+
+.intake{background:var(--card);border:1px solid var(--rule);border-radius:4px;margin-bottom:22px;overflow:hidden}
+.intake-top{display:grid;grid-template-columns:1fr 1.15fr}
+@media(max-width:820px){.intake-top{grid-template-columns:1fr}}
+.dropzone{margin:16px;border:2px dashed var(--rule);border-radius:3px;padding:26px 20px;text-align:center;
+  cursor:pointer;transition:background .12s,border-color .12s;display:flex;flex-direction:column;justify-content:center}
+.dropzone:hover,.dropzone.hot{background:var(--teal-tint);border-color:var(--teal)}
+.dropzone:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.dropzone .icon{width:38px;height:38px;margin:0 auto 10px;border:2px solid var(--teal);border-radius:3px;position:relative}
+.dropzone .icon:before{content:'';position:absolute;left:50%;top:8px;width:2px;height:16px;background:var(--teal);transform:translateX(-50%)}
+.dropzone .icon:after{content:'';position:absolute;left:50%;top:8px;width:11px;height:11px;
+  border-left:2px solid var(--teal);border-top:2px solid var(--teal);transform:translateX(-50%) rotate(45deg)}
+.dropzone h2{margin:0 0 4px;font-size:16px;font-weight:600}
+.dropzone p{margin:0;color:var(--ink-soft);font-size:13px}
+.dropzone input{display:none}
+
+.filelist{border-left:1px solid var(--rule-soft);padding:16px 18px;min-height:150px;display:flex;flex-direction:column}
+@media(max-width:820px){.filelist{border-left:none;border-top:1px solid var(--rule-soft)}}
+.filelist-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.filelist-head h3{margin:0;font-size:14px;font-weight:600}
+.filelist-head span{font-size:12.5px;color:var(--ink-soft)}
+.files{flex:1;overflow-y:auto;max-height:210px;margin:0;padding:0;list-style:none}
+.files li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--rule-soft);font-size:13px}
+.files li:last-child{border-bottom:none}
+.files .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex:none}
+.files .dot.bad{background:var(--red)}
+.files .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files .dt{font-weight:600;flex:none}
+.files .ct{color:var(--ink-soft);flex:none}
+.files .x{border:none;background:none;color:var(--ink-soft);cursor:pointer;font-size:16px;line-height:1;padding:2px 5px;border-radius:2px}
+.files .x:hover{background:var(--red-tint);color:var(--red)}
+.empty{color:var(--ink-soft);font-size:13px;padding:16px 0;text-align:center}
+.progress{height:3px;background:var(--rule-soft);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
+.progress.on{display:block}
+.progress i{display:block;height:100%;background:var(--teal);width:0;transition:width .2s}
+
+.controlbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:11px 18px;
+  border-top:1px solid var(--rule-soft);background:#FAFBFB;font-size:13.5px}
+.controlbar label{color:var(--ink-soft);font-size:13px}
+select{padding:5px 8px;border:1px solid var(--rule);border-radius:2px;background:#fff;color:var(--ink);
+  font-family:inherit;font-size:13.5px;max-width:230px}
+.btn{padding:6px 13px;border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:2px;
+  cursor:pointer;font-weight:500;font-family:inherit;font-size:13.5px}
+.btn:hover{background:#0b5959}
+.btn.ghost{background:#fff;color:var(--teal)}
+.btn.ghost:hover{background:var(--teal-tint)}
+.btn.warn{border-color:var(--red);color:var(--red);background:#fff}
+.btn.warn:hover{background:var(--red-tint)}
+.btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.spacer{flex:1}
+
+.msg{display:none;padding:11px 15px;border-radius:2px;margin-bottom:18px;font-size:14px}
+.msg.on{display:block}
+.msg.error{background:var(--red-tint);border:1px solid var(--red);color:var(--red)}
+
+.tabs{display:flex;border-bottom:2px solid var(--ink);margin-bottom:20px;overflow-x:auto}
+.tabs button{border:none;background:none;font-family:inherit;font-size:14.5px;font-weight:500;color:var(--ink-soft);
+  padding:9px 16px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--teal);font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.panel{display:none}
+.panel.on{display:block}
+#app{display:none}
+#app.on{display:block}
+
+section{margin-bottom:28px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  border-bottom:1px solid var(--ink);padding-bottom:6px;margin-bottom:13px}
+.head h2{margin:0;font-size:18px;font-weight:600}
+.head span{font-size:13px;color:var(--ink-soft)}
+.note{color:var(--ink-soft);font-size:13.5px;margin:0 0 13px;max-width:80ch}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:15px 17px}
+.card h3{margin:0 0 3px;font-size:13px;font-weight:500;color:var(--ink-soft)}
+.card .big{font-size:29px;font-weight:600;line-height:1.12;letter-spacing:-.02em}
+.card .sub{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+.card.flag{border-left:4px solid var(--amber)} .card.flag .big{color:var(--amber)}
+.card.ok{border-left:4px solid var(--teal)}
+.card.alert{border-left:4px solid var(--violet)} .card.alert .big{color:var(--violet)}
+
+.ledger{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:18px 20px}
+.ledger .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:14.5px}
+.ledger .row.total{border-bottom:2px solid var(--ink);font-weight:600;font-size:16px;padding-bottom:8px;margin-bottom:5px}
+.ledger .row.group{font-weight:600;border-top:1px solid var(--rule);margin-top:8px;padding-top:8px}
+.ledger .row.sub{padding-left:16px}
+.ledger .row.leaf{padding-left:34px;color:var(--ink-soft);font-size:13.5px}
+.ledger .dots{flex:1;border-bottom:1px dotted var(--rule);margin:0 8px;transform:translateY(-4px)}
+.ledger .val{white-space:nowrap;font-weight:500}
+.ledger .row.flagrow{background:var(--amber-tint);margin:0 -10px;padding-left:26px;padding-right:10px}
+.pastebox textarea{width:100%;height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;
+  border:1px solid var(--rule);border-radius:2px;padding:10px;background:#FAFBFB;color:var(--ink);resize:vertical}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card)}
+th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+th{border-bottom:1px solid var(--ink);font-weight:600;font-size:12.5px;white-space:nowrap;
+  position:sticky;top:0;background:var(--card);z-index:1}
+th.num,td.num{text-align:right}
+tbody tr:hover{background:var(--teal-tint)}
+tbody tr.hi{background:var(--amber-tint)} tbody tr.hi:hover{background:#F2E4C6}
+tbody tr.vi{background:var(--violet-tint)} tbody tr.vi:hover{background:#E1DCF0}
+tfoot td{font-weight:600;border-top:1px solid var(--ink);border-bottom:none;background:#FAFBFB}
+.tbl-wrap{border:1px solid var(--rule);border-radius:3px;overflow:auto;max-height:640px}
+.bar{display:block;height:7px;background:var(--teal);border-radius:1px;min-width:2px}
+.bar.amber{background:var(--amber)} .bar.red{background:var(--red)} .bar.violet{background:var(--violet)}
+.delta{font-weight:600;font-size:12.5px}
+.delta.up{color:var(--red)} .delta.down{color:var(--green)} .delta.flat{color:var(--ink-soft)}
+.pill{display:inline-block;padding:1px 7px;border-radius:9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill.strong{background:var(--violet);color:#fff}
+.pill.likely{background:var(--violet-tint);color:var(--violet)}
+.pill.weak{background:var(--rule-soft);color:var(--ink-soft)}
+
+.split{display:flex;height:24px;border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:6px 0 9px}
+.split i{display:block;height:100%}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-soft)}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:1px;margin-right:5px}
+
+.chart{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:14px 16px}
+.chart svg{width:100%;height:auto;display:block}
+
+.sim{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--teal);border-radius:3px;padding:16px 18px}
+.sim label{display:block;font-size:13.5px;margin-bottom:5px}
+.sim input[type=range]{width:100%;max-width:420px;accent-color:var(--teal)}
+.sim .ctrl{margin-bottom:13px}
+.out{font-weight:600;color:var(--teal)}
+.result{background:var(--teal-tint);border-radius:2px;padding:12px 14px;margin-top:6px;font-size:14px}
+.result .big{font-size:24px;font-weight:600;color:var(--teal)}
+.callout{background:var(--amber-tint);border-left:4px solid var(--amber);padding:12px 15px;border-radius:2px;font-size:14px;margin-bottom:13px}
+.callout.violet{background:var(--violet-tint);border-left-color:var(--violet)}
+input[type=search]{padding:6px 9px;border:1px solid var(--rule);border-radius:2px;font-family:inherit;font-size:13.5px;width:230px}
+footer{border-top:1px solid var(--rule);margin-top:36px;padding-top:12px;color:var(--ink-soft);font-size:12.5px}
+@media print{.intake,.tabs,.pastebox,footer,.no-print{display:none}.panel{display:block!important}body{background:#fff}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-  <h1>PRS Line Items Archive</h1>
-  <p class="sub">Daily exports of the PRS line-item snapshot query. Click a date to download the .xlsx.</p>
+<div class="wrap">
 
-  <input type="search" id="filter" placeholder="Filter by date (e.g. 2026-09)">
+  <div class="masthead">
+    <div>
+      <h1>Zander PRS Analyser</h1>
+      <p>Load one day or a fortnight of PRS sheets. Everything is calculated in your browser — no file leaves this page.
+        &nbsp;<a href="archive/" style="color:var(--teal)">Browse raw exports →</a></p>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </div>
 
-  <table>
-    <thead>
-      <tr><th>Date</th><th>File</th><th>Size</th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <div id="empty">No matching files.</div>
+  <div class="msg error" id="err"></div>
+
+  <div class="intake">
+    <div class="intake-top">
+      <label class="dropzone" id="drop" tabindex="0" role="button">
+        <input type="file" id="file" accept=".xlsx,.xlsm,.xls" multiple>
+        <div class="icon" aria-hidden="true"></div>
+        <h2>Add PRS sheets</h2>
+        <p>Drop several files at once, or click to browse.<br>One file per date, .xlsx from the daily export.</p>
+      </label>
+      <div class="filelist">
+        <div class="filelist-head">
+          <h3>Loaded files</h3>
+          <span id="fileCount">none yet</span>
+        </div>
+        <ul class="files" id="files"><li class="empty">Nothing loaded. Add a sheet to begin.</li></ul>
+        <div class="progress" id="prog"><i></i></div>
+      </div>
+    </div>
+    <div class="controlbar">
+      <label for="fDate">Date</label>
+      <select id="fDate"><option value="">All dates</option></select>
+      <label for="fRegion">Region</label>
+      <select id="fRegion"><option value="">All</option></select>
+      <label for="fStore">Store</label>
+      <select id="fStore"><option value="">All</option></select>
+      <button class="btn ghost" id="reset">Clear filters</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="print">Print</button>
+      <button class="btn warn" id="clearAll">Remove all files</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="tabs" role="tablist">
+      <button class="on" data-tab="sum">Summary</button>
+      <button data-tab="days">Day by day</button>
+      <button data-tab="swap">Cross-customer swaps</button>
+      <button data-tab="count">Counting mistakes</button>
+      <button data-tab="who">Checkers &amp; products</button>
+      <button data-tab="lines">Line items</button>
+    </div>
+
+    <div class="panel on" id="p-sum">
+      <section>
+        <div class="head"><h2>Position</h2><span id="scopeLine"></span></div>
+        <div class="grid g4" id="kpis"></div>
+      </section>
+      <section>
+        <div class="head"><h2>Classification</h2><span>Scanner-related versus everything else</span></div>
+        <p class="note">Each line goes into exactly one bucket. Lines with no GP, deleted lines and damage claims settle first; whatever remains is classified by the scanning path in the Source column.</p>
+        <div class="grid g2">
+          <div class="ledger" id="ledger"></div>
+          <div class="ledger pastebox">
+            <div class="head" style="border-bottom:1px solid var(--rule-soft)">
+              <h2 style="font-size:15px">Summary text</h2>
+              <button class="btn" id="copy">Copy summary</button>
+            </div>
+            <textarea id="paste" readonly></textarea>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="head"><h2>Where the quantity came from</h2><span>Source column</span></div>
+        <p class="note">A source ending in <b>_MANUAL</b> means part of the quantity was typed or tapped rather than scanned. Those lines carry a claimed quantity, not a verified one.</p>
+        <div class="grid g2">
+          <div class="tbl-wrap"><table id="tSource"></table></div>
+          <div>
+            <div class="card ok" style="margin-bottom:13px">
+              <h3>Quantity claimed by hand</h3><div class="big" id="manualPct"></div><div class="sub" id="manualSub"></div>
+            </div>
+            <div class="split" id="manualSplit"></div>
+            <div class="legend">
+              <span><b style="background:var(--amber)"></b>Manually added</span>
+              <span><b style="background:var(--teal)"></b>Scan verified</span>
+              <span><b style="background:var(--rule)"></b>No path recorded</span>
+            </div>
+            <h3 style="margin:18px 0 8px;font-size:14px;font-weight:600">Complaint types</h3>
+            <div class="tbl-wrap"><table id="tComplaint"></table></div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="head"><h2>Value at stake</h2><span>By classification</span></div>
+        <div class="tbl-wrap"><table id="tValue"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Regions</h2></div>
+        <div class="tbl-wrap"><table id="tRegion"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Data quality</h2><span>Read this before quoting timing figures</span></div>
+        <div class="grid g2" id="dq"></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-days">
+      <section>
+        <div class="head"><h2>Day by day</h2><span id="daysScope"></span></div>
+        <p class="note" id="daysNote"></p>
+        <div class="chart" id="chartTotals"></div>
+      </section>
+      <section>
+        <div class="head"><h2>Daily comparison</h2><span>Change compares with the previous loaded date</span></div>
+        <div class="tbl-wrap"><table id="tDays"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Category movement</h2><span>Lines per category, per date</span></div>
+        <div class="tbl-wrap"><table id="tCatDays"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Counting mistakes over time</h2></div>
+        <div class="chart" id="chartCounting"></div>
+      </section>
+      <section>
+        <div class="head"><h2>Stores across the period</h2><span>Only stores appearing on more than one date</span></div>
+        <div class="tbl-wrap"><table id="tStoreDays"></table></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-swap">
+      <section>
+        <div class="head"><h2>Cross-customer swaps</h2><span id="swapScope"></span></div>
+        <p class="note">A swap is one product short on one invoice and excess on another. The two invoices go to different customers, so a physical mix-up between trays explains both complaints at once — and neither one is a counting mistake. Pairs are matched on product, then scored on batch number, quantity, checker, store and (depending on the mode below) invoice date or how far apart the dates are. This always looks across every loaded file, not just the one selected in the date filter above.</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap" class="no-print">
+          <button class="btn" id="modeInvoice" data-mode="invoice">Same invoice date swap</button>
+          <button class="btn ghost" id="modeWindow" data-mode="window">Multiple dates stock swap</button>
+        </div>
+        <p class="note" id="swapModeNote"></p>
+        <div class="grid g4" id="swapKpis"></div>
+      </section>
+      <section>
+        <div class="head"><h2>Matched pairs</h2><span>Highest confidence first</span></div>
+        <div class="callout violet" id="swapCallout"></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap" class="no-print">
+          <label for="swapMin" style="font-size:13px;color:var(--ink-soft)">Show</label>
+          <select id="swapMin">
+            <option value="0">All candidates</option>
+            <option value="45" selected>Likely and strong only</option>
+            <option value="70">Strong only</option>
+          </select>
+          <label for="swapDays" id="swapDaysLbl" style="font-size:13px;color:var(--ink-soft);opacity:.45">Within</label>
+          <select id="swapDays" disabled>
+            <option value="0">Same date only</option>
+            <option value="2">2 days</option>
+            <option value="7" selected>7 days</option>
+            <option value="999">Any date</option>
+          </select>
+          <input type="search" id="swapSearch" placeholder="Filter by product or store">
+          <span class="spacer"></span>
+          <button class="btn ghost" id="swapCsv">Download as CSV</button>
+        </div>
+        <div class="tbl-wrap"><table id="tSwap"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Products that swap repeatedly</h2><span>Look-alike packs and adjacent bin locations</span></div>
+        <div class="tbl-wrap"><table id="tSwapProd"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Store pairs that trade with each other</h2><span>Two customers whose stock keeps crossing over</span></div>
+        <div class="tbl-wrap"><table id="tSwapStore"></table></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-count">
+      <section>
+        <div class="head"><h2>The counting-mistake bucket</h2><span id="cmCount"></span></div>
+        <p class="note">Direct Scan Manual and Auto Select Manual combined — one unit scanned, the rest added with the <b>+</b> button.</p>
+        <div class="callout" id="cmCallout"></div>
+        <div class="grid g2">
+          <div>
+            <h3 style="margin:0 0 8px;font-size:14px;font-weight:600">By required quantity</h3>
+            <div class="tbl-wrap"><table id="tBands"></table></div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 8px;font-size:14px;font-weight:600">Direction of the error</h3>
+            <div class="tbl-wrap"><table id="tDirection"></table></div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="head"><h2>Rule simulator</h2><span>Test a control before you build it</span></div>
+        <div class="grid g2">
+          <div class="sim">
+            <div class="ctrl">
+              <label for="simQty">Scan every unit when required quantity is <span class="out" id="simQtyOut">3</span> or less</label>
+              <input type="range" id="simQty" min="1" max="12" value="3">
+            </div>
+            <div class="ctrl">
+              <label for="simSec">Block confirmation under <span class="out" id="simSecOut">1.5</span> seconds per unit handled</label>
+              <input type="range" id="simSec" min="0" max="50" value="15">
+            </div>
+            <div class="result" id="simOut"></div>
+          </div>
+          <div class="sim" style="border-left-color:var(--amber)">
+            <h3 style="margin:0 0 10px;font-size:14px;font-weight:600">Handling time on these lines</h3>
+            <div id="timing"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-who">
+      <section>
+        <div class="head"><h2>Checkers</h2><span>All classifications, counting mistakes called out separately</span></div>
+        <p class="note">If one name sits far above the rest across several dates, that is worth a conversation. A flat list means the cause is the workflow, not the people.</p>
+        <div class="tbl-wrap"><table id="tChecker"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Products</h2><span>Repeat offenders across the loaded period</span></div>
+        <div class="tbl-wrap"><table id="tProduct"></table></div>
+      </section>
+      <section>
+        <div class="head"><h2>Stores</h2></div>
+        <div class="tbl-wrap"><table id="tStore"></table></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-lines">
+      <section>
+        <div class="head"><h2>Line items</h2><span id="lineCount"></span></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap" class="no-print">
+          <input type="search" id="lineSearch" placeholder="Product, invoice, batch, checker, store">
+          <select id="lineCls"><option value="">All classifications</option></select>
+          <span class="spacer"></span>
+          <button class="btn ghost" id="lineCsv">Download as CSV</button>
+        </div>
+        <div class="tbl-wrap"><table id="tLines"></table></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>Calculated in the browser from the files you choose. Nothing is uploaded.</footer>
+</div>
 
 <script>
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+const $ = id => document.getElementById(id);
+const inr = n => '\u20B9' + Math.round(n||0).toLocaleString('en-IN');
+const inr2 = n => '\u20B9' + (n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = (a,b) => b ? a/b*100 : 0;
+const p1 = v => v.toFixed(1)+'%';
+const p0 = v => Math.round(v)+'%';
+const nf = n => (n||0).toLocaleString('en-IN');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num = v => { if(v==null||v==='') return NaN; const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?NaN:n; };
+const norm = s => String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+
+function parseWhen(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(typeof v==='number') return new Date(Math.round((v-25569)*86400000));
+  const m=String(v).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i);
+  if(!m){const d=new Date(v);return isNaN(d)?null:d;}
+  let h=+m[4]; const ap=(m[7]||'').toLowerCase();
+  if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0;
+  return new Date(+m[3],+m[2]-1,+m[1],h,+m[5],+m[6]);
+}
+const dayKey = d => d ? d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') : '';
+const shortDate = k => { if(!k) return '\u2014'; const p=k.split('-'); return p[2]+'/'+p[1]; };
+const fmtTime = d => d ? String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0') : '\u2014';
+
+/* "Invoice Date" column \u2014 dedicated per-line date used only for swap matching.
+   Accepts YYYY-MM-DD (the expected format), DD/MM/YYYY, or a parsed Excel date/serial. */
+function parseInvoiceDate(v){
+  if(v==null||v==='') return '';
+  if(v instanceof Date) return isNaN(v)?'':dayKey(v);
+  if(typeof v==='number') return dayKey(new Date(Math.round((v-25569)*86400000)));
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){ const y=m[3].length===2?'20'+m[3]:m[3]; return y+'-'+String(m[1]).padStart(2,'0')+'-'+String(m[2]).padStart(2,'0'); }
+  const d=new Date(s); return isNaN(d)?'':dayKey(d);
 }
 
-let manifest = [];
+const SG={
+  DIRECT_SCAN:{k:'direct',l:'Direct scan'}, AUTO_SELECT_SCAN:{k:'direct',l:'Direct scan'}, SCANNER:{k:'direct',l:'Direct scan'},
+  DIRECT_SCAN_MANUAL:{k:'counting',l:'Auto modify / direct scan \u2014 counting mistake'},
+  AUTO_SELECT_SCAN_MANUAL:{k:'counting',l:'Auto modify / direct scan \u2014 counting mistake'},
+  RECOMMENDATION:{k:'recomm',l:'Recommendation'}, RECOMMENDATION_MANUAL:{k:'recomm',l:'Recommendation'},
+  MANUAL:{k:'allman',l:'All manual'}, SEARCH_MANUAL:{k:'allman',l:'All manual'}
+};
+const COUNTING=['DIRECT_SCAN_MANUAL','AUTO_SELECT_SCAN_MANUAL'];
+function classify(r){
+  const st=(r.status||'').trim().toLowerCase(), ct=(r.ctype||'').trim().toLowerCase();
+  const src=(r.source||'').trim().toUpperCase().replace(/\s+/g,'_');
+  if(st==='item not in gp') return {scanner:false,key:'notingp',label:'Item not in GP',
+    leaf:(ct==='contra excess'||ct==='pure excess')?'Contra excess + pure excess':'Unmatched (sheet print checking)'};
+  if(st==='deleted') return {scanner:false,key:'deleted',label:'Pure excess (deleted)'};
+  if(ct==='damage') return {scanner:false,key:'damage',label:'Fulfilled (damage)'};
+  if(!src||!SG[src]) return {scanner:false,key:'modif',label:'Modification issue / no scan path'};
+  return {scanner:true,key:SG[src].k,label:SG[src].l};
+}
+const isShort = t => /short/i.test(t);
+const isExcess = t => /excess/i.test(t);
 
-async function load() {
-  const res = await fetch('manifest.json', { cache: 'no-store' });
-  manifest = await res.json();
-  manifest.sort((a, b) => b.date.localeCompare(a.date));
-  render(manifest);
+let FILES=[], TAB='sum', SWAPS=[], SWAP_MODE='invoice';
+
+const drop=$('drop');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('hot');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('hot');}));
+drop.addEventListener('drop',ev=>queue(Array.from(ev.dataTransfer.files)));
+drop.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();$('file').click();}});
+$('file').addEventListener('change',ev=>{queue(Array.from(ev.target.files));ev.target.value='';});
+
+function showErr(m){ $('err').textContent=m; $('err').classList.add('on'); }
+function clearErr(){ $('err').classList.remove('on'); }
+
+function queue(list){
+  const files=list.filter(f=>/\.(xlsx|xlsm|xls)$/i.test(f.name));
+  if(!files.length){ showErr('Those are not spreadsheet files. The daily PRS export is an .xlsx.'); return; }
+  clearErr();
+  const bar=$('prog'); bar.classList.add('on'); bar.firstElementChild.style.width='0%';
+  let done=0; const errors=[];
+  (function next(i){
+    if(i>=files.length){
+      bar.firstElementChild.style.width='100%';
+      setTimeout(function(){bar.classList.remove('on');},350);
+      if(errors.length) showErr(errors.join('   '));
+      paint(); return;
+    }
+    const f=files[i], fr=new FileReader();
+    const after=function(){ done++; bar.firstElementChild.style.width=(done/files.length*100)+'%'; next(i+1); };
+    fr.onerror=function(){ errors.push(f.name+' could not be read.'); after(); };
+    fr.onload=function(e){
+      try{ addFile(new Uint8Array(e.target.result), f.name); }
+      catch(ex){ errors.push(f.name+': '+ex.message); }
+      after();
+    };
+    fr.readAsArrayBuffer(f);
+  })(0);
 }
 
-function render(items) {
-  const rows = document.getElementById('rows');
-  const empty = document.getElementById('empty');
-  rows.innerHTML = '';
-  if (items.length === 0) {
-    empty.style.display = 'block';
-    return;
+function addFile(data,name){
+  const wb=XLSX.read(data,{type:'array',cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',blankrows:true,raw:true});
+  let h=-1;
+  for(let i=0;i<Math.min(aoa.length,40);i++){
+    const row=(aoa[i]||[]).map(function(c){return String(c).trim().toLowerCase();});
+    if(row.indexOf('gp number')>-1 && row.indexOf('complaint type')>-1){h=i;break;}
   }
-  empty.style.display = 'none';
-  for (const item of items) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.date}</td>
-      <td><a class="dl" href="${item.file}" download>${item.file.split('/').pop()}</a></td>
-      <td class="size">${formatSize(item.size)}</td>
-    `;
-    rows.appendChild(tr);
+  if(h<0) throw new Error('no "GP Number" header row found');
+  const idx={}; aoa[h].forEach(function(c,i){const k=String(c).trim().toLowerCase(); if(k) idx[k]=i;});
+  const miss=['complaint type','source','line status','error value'].filter(function(k){return !(k in idx);});
+  if(miss.length) throw new Error('missing columns \u2014 '+miss.join(', '));
+  const g=function(row,k){const i=idx[k];return i===undefined?'':row[i];};
+
+  let fileDate='';
+  for(let i=0;i<h;i++){
+    const line=(aoa[i]||[]).map(function(c){return String(c);}).join(' ');
+    const m=line.match(/Issue Date:\s*(\d{4})-(\d{2})-(\d{2})/i);
+    if(m){ fileDate=m[1]+'-'+m[2]+'-'+m[3]; break; }
+    const m2=line.match(/Issue Date:\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
+    if(m2){ const y=m2[3].length===2?'20'+m2[3]:m2[3];
+      fileDate=y+'-'+String(m2[2]).padStart(2,'0')+'-'+String(m2[1]).padStart(2,'0'); break; }
   }
+  if(!fileDate){
+    const m=name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+    const m2=name.match(/(\d{2})[-_](\d{2})[-_](\d{4})/);
+    if(m) fileDate=m[1]+'-'+m[2]+'-'+m[3];
+    else if(m2) fileDate=m2[3]+'-'+m2[2]+'-'+m2[1];
+  }
+
+  const id='f'+Date.now()+Math.random().toString(36).slice(2,6);
+  const rows=[];
+  for(let i=h+1;i<aoa.length;i++){
+    const row=aoa[i]||[];
+    const ctype=String(g(row,'complaint type')).trim();
+    const gp=String(g(row,'gp number')).trim();
+    if(!ctype&&!gp) continue;
+    const st=parseWhen(g(row,'start time')), et=parseWhen(g(row,'end time'));
+    const r={
+      fid:id, fileDate:fileDate,
+      gp:gp, ticket:String(g(row,'ticket id')).trim(), invoice:String(g(row,'invoice no')).trim(),
+      invDate:parseInvoiceDate(g(row,'invoice date')),
+      product:String(g(row,'product name')).trim()||'(blank)',
+      ctype:ctype,
+      actQty:num(g(row,'act qty')), prsQty:num(g(row,'prs qty')), mrp:num(g(row,'mrp')),
+      value:num(g(row,'error value'))||0,
+      scanned:num(g(row,'scanned qty')), expected:num(g(row,'expected qty')),
+      batch:String(g(row,'batch no')).trim(),
+      source:String(g(row,'source')).trim(), status:String(g(row,'line status')).trim(),
+      checker:String(g(row,'checker name')).trim()||'(blank)',
+      store:String(g(row,'store')).trim()||'(blank)',
+      region:String(g(row,'region')).trim()||'(blank)',
+      st:st, et:et
+    };
+    r.dur=(st&&et)?(et-st)/1000:null;
+    r.qty=(!isNaN(r.expected)&&r.expected>0)?r.expected:((!isNaN(r.scanned)&&r.scanned>0)?r.scanned:NaN);
+    r.perUnit=(r.dur!=null&&r.dur>=0&&r.qty>0)?r.dur/r.qty:null;
+    r.day=fileDate||dayKey(et||st);
+    r.pkey=norm(r.product);
+    r.cls=classify(r);
+    r.isCounting=COUNTING.indexOf(r.source.trim().toUpperCase())>-1;
+    r.isManual=/_MANUAL$/i.test(r.source.trim())||/^MANUAL$/i.test(r.source.trim());
+    rows.push(r);
+  }
+  if(!rows.length) throw new Error('header found but no data rows below it');
+  for(let i=0;i<FILES.length;i++){ if(FILES[i].name===name&&FILES[i].n===rows.length) throw new Error(name+' is already loaded'); }
+  FILES.push({id:id,name:name,date:fileDate,rows:rows,n:rows.length});
+  FILES.sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
 }
 
-document.getElementById('filter').addEventListener('input', (e) => {
-  const q = e.target.value.trim().toLowerCase();
-  render(manifest.filter(item => item.date.toLowerCase().includes(q)));
+function removeFile(id){ FILES=FILES.filter(function(f){return f.id!==id;}); paint(); }
+$('clearAll').addEventListener('click',function(){FILES=[];clearErr();paint();});
+$('reset').addEventListener('click',function(){$('fDate').value='';$('fRegion').value='';$('fStore').value='';render();});
+$('print').addEventListener('click',function(){window.print();});
+['fDate','fRegion','fStore'].forEach(function(id){$(id).addEventListener('change',render);});
+Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){
+  b.addEventListener('click',function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.remove('on');});
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'),function(x){x.classList.remove('on');});
+    b.classList.add('on'); TAB=b.dataset.tab; $('p-'+TAB).classList.add('on');
+  });
 });
 
-load();
+function paint(){
+  const ul=$('files');
+  if(!FILES.length){
+    ul.innerHTML='<li class="empty">Nothing loaded. Add a sheet to begin.</li>';
+    $('fileCount').textContent='none yet';
+    $('app').classList.remove('on'); $('stamp').innerHTML='';
+    return;
+  }
+  ul.innerHTML=FILES.map(function(f){
+    return '<li><span class="dot'+(f.date?'':' bad')+'"></span>'+
+      '<span class="dt">'+esc(f.date?shortDate(f.date):'no date')+'</span>'+
+      '<span class="nm" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'+
+      '<span class="ct">'+nf(f.n)+'</span>'+
+      '<button class="x" data-id="'+f.id+'" title="Remove">\u00D7</button></li>';
+  }).join('');
+  Array.prototype.forEach.call(ul.querySelectorAll('.x'),function(b){
+    b.addEventListener('click',function(){removeFile(b.dataset.id);});
+  });
+  const total=FILES.reduce(function(s,f){return s+f.n;},0);
+  $('fileCount').textContent=FILES.length+' file'+(FILES.length>1?'s':'')+' \u00B7 '+nf(total)+' lines';
+  const dates=uniq(FILES.map(function(f){return f.date;}).filter(Boolean)).sort();
+  $('fDate').innerHTML='<option value="">All dates'+(dates.length>1?' ('+dates.length+')':'')+'</option>'+
+    dates.map(function(d){return '<option value="'+d+'">'+shortDate(d)+'</option>';}).join('');
+  fillSel('fRegion','region'); fillSel('fStore','store');
+  $('app').classList.add('on');
+  render();
+}
+function uniq(a){ const s={},o=[]; a.forEach(function(x){if(!s[x]){s[x]=1;o.push(x);}}); return o; }
+function fillSel(id,key){
+  const cur=$(id).value;
+  const vals=uniq(all().map(function(r){return r[key];})).filter(function(v){return v&&v!=='(blank)';}).sort();
+  $(id).innerHTML='<option value="">All</option>'+vals.map(function(v){
+    return '<option'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';}).join('');
+}
+function all(){ return FILES.reduce(function(a,f){return a.concat(f.rows);},[]); }
+function filtered(){
+  const d=$('fDate').value, rg=$('fRegion').value, st=$('fStore').value;
+  return all().filter(function(r){return (!d||r.day===d)&&(!rg||r.region===rg)&&(!st||r.store===st);});
+}
+/* Cross-customer swaps deliberately ignores the top "date" filter — a swap pair can land in two
+   different uploaded files, so this always pools every loaded file (region/store filters still apply). */
+function swapPool(){
+  const rg=$('fRegion').value, st=$('fStore').value;
+  return all().filter(function(r){return (!rg||r.region===rg)&&(!st||r.store===st);});
+}
+
+function table(el,cols,rows,opts){
+  opts=opts||{};
+  const body = rows.length ? rows.map(function(r){
+      return '<tr class="'+(r._cls||'')+'">'+cols.map(function(c){
+        const v=r[c.k]; return '<td class="'+(c.num?'num':'')+'">'+(c.raw?(v==null?'':v):esc(v))+'</td>';
+      }).join('')+'</tr>';
+    }).join('')
+    : '<tr><td colspan="'+cols.length+'" style="color:var(--ink-soft);padding:18px;text-align:center">Nothing to show here.</td></tr>';
+  el.innerHTML='<thead><tr>'+cols.map(function(c){return '<th class="'+(c.num?'num':'')+'">'+esc(c.h)+'</th>';}).join('')+'</tr></thead>'+
+    '<tbody>'+body+'</tbody>'+
+    (opts.foot?'<tfoot><tr>'+cols.map(function(c){
+      const v=opts.foot[c.k]; return '<td class="'+(c.num?'num':'')+'">'+(v==null?'':v)+'</td>';}).join('')+'</tr></tfoot>':'');
+}
+function barCell(v,max,tone){
+  return '<span class="bar '+(tone||'')+'" style="width:'+(max>0?Math.max(2,v/max*100):2).toFixed(1)+'%"></span>';
+}
+function tally(rows,fn){
+  const m={};
+  rows.forEach(function(r){const k=fn(r); if(!m[k]) m[k]={k:k,n:0,v:0,c:0};
+    m[k].n++; m[k].v+=r.value; if(r.isCounting)m[k].c++;});
+  return Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.n-a.n||b.v-a.v;});
+}
+function dl(name,text){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+text],{type:'text/csv;charset=utf-8'}));
+  a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+function csvCell(v){ return '"'+String(v==null||(typeof v==='number'&&isNaN(v))?'':v).replace(/"/g,'""')+'"'; }
+function card(h,b,s,c){
+  return '<div class="card '+(c||'')+'"><h3>'+esc(h)+'</h3><div class="big">'+b+'</div><div class="sub">'+esc(s)+'</div></div>';
+}
+
+function lineChart(el,series,labels,opts){
+  opts=opts||{};
+  const W=760,H=210,pl=46,pr=14,pt=14,pb=30;
+  let maxV=1;
+  series.forEach(function(s){s.data.forEach(function(v){if(v>maxV)maxV=v;});});
+  const iw=W-pl-pr, ih=H-pt-pb;
+  const x=function(i){return pl+(labels.length<2?iw/2:i*iw/(labels.length-1));};
+  const y=function(v){return pt+ih-(v/maxV)*ih;};
+  let g='';
+  for(let i=0;i<=4;i++){
+    const v=maxV*i/4, yy=y(v);
+    g+='<line x1="'+pl+'" y1="'+yy+'" x2="'+(W-pr)+'" y2="'+yy+'" stroke="#E7EBED"/>'+
+       '<text x="'+(pl-7)+'" y="'+(yy+4)+'" text-anchor="end" font-size="10" fill="#5C6E77">'+Math.round(v)+'</text>';
+  }
+  labels.forEach(function(l,i){
+    g+='<text x="'+x(i)+'" y="'+(H-9)+'" text-anchor="middle" font-size="10.5" fill="#5C6E77">'+esc(l)+'</text>';
+  });
+  series.forEach(function(s){
+    g+='<polyline points="'+s.data.map(function(v,i){return x(i)+','+y(v);}).join(' ')+
+       '" fill="none" stroke="'+s.color+'" stroke-width="2.2" stroke-linejoin="round"/>';
+    s.data.forEach(function(v,i){
+      g+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="3.4" fill="#fff" stroke="'+s.color+'" stroke-width="2">'+
+         '<title>'+esc(s.name+' \u00B7 '+labels[i]+' \u00B7 '+v)+'</title></circle>';
+    });
+  });
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img">'+g+'</svg>'+
+    '<div class="legend" style="margin-top:8px">'+series.map(function(s){
+      return '<span><b style="background:'+s.color+'"></b>'+esc(s.name)+'</span>';}).join('')+'</div>'+
+    (opts.caption?'<p class="note" style="margin:8px 0 0">'+esc(opts.caption)+'</p>':'');
+}
+
+/* mode:
+   'window'  — legacy behaviour: pair short+excess regardless of exact date, scored down as the
+               gap between file/invoice dates widens. Used for inventory-level stock reconciliation
+               and by every caller outside the Cross-customer swaps tab (unchanged).
+   'invoice' — the swaps tab's default: only pairs lines that share the exact same Invoice Date
+               (same-day tray mix-up by a checker), and looks for overlapping scan windows instead
+               of a date gap. Requires the "Invoice Date" column; pairs without it on both sides
+               are skipped. */
+function buildSwaps(rows,mode){
+  mode = mode || 'window';
+  const shorts=rows.filter(function(r){return isShort(r.ctype);});
+  const exs=rows.filter(function(r){return isExcess(r.ctype);});
+  const byProd={};
+  exs.forEach(function(e){ if(!byProd[e.pkey]) byProd[e.pkey]=[]; byProd[e.pkey].push(e); });
+  const cands=[];
+  shorts.forEach(function(s){
+    const list=byProd[s.pkey]||[];
+    list.forEach(function(e){
+      if(s===e) return;
+      if(s.invoice&&e.invoice&&s.invoice===e.invoice) return;
+      if(mode==='invoice' && (!s.invDate||!e.invDate||s.invDate!==e.invDate)) return;
+      let score=20; const why=[];
+      if(s.batch&&e.batch&&norm(s.batch)===norm(e.batch)){score+=45;why.push('same batch');}
+      else if(s.batch&&e.batch){score-=10;}
+      if(!isNaN(s.prsQty)&&!isNaN(e.prsQty)){
+        if(s.prsQty===e.prsQty){score+=22;why.push('same quantity');}
+        else if(Math.abs(s.prsQty-e.prsQty)<=Math.max(1,s.prsQty*0.25)) score+=8;
+        else score-=6;
+      }
+      if(s.checker&&s.checker===e.checker){score+=14;why.push('same checker');}
+      let gap=999, overlap=false;
+      if(mode==='invoice'){
+        gap=0;
+        overlap = !!(s.st&&s.et&&e.st&&e.et && s.st<=e.et && e.st<=s.et);
+        if(overlap){score+=15;why.push('overlapping scan time');}
+      } else {
+        const sD=s.invDate||s.day, eD=e.invDate||e.day;
+        if(sD&&eD) gap=Math.abs((new Date(sD)-new Date(eD))/86400000);
+        if(gap===0){score+=10;why.push('same date');} else if(gap<=2){score+=5;} else if(gap>7){score-=8;}
+      }
+      if(s.region&&s.region===e.region) score+=4;
+      if(s.store&&s.store===e.store) score-=25;
+      cands.push({s:s,e:e,score:Math.max(0,Math.min(100,score)),why:why,gap:gap,overlap:overlap,
+        value:Math.min(s.value||0,e.value||0)});
+    });
+  });
+  cands.sort(function(a,b){return b.score-a.score||b.value-a.value;});
+  const usedS=[], usedE=[], out=[];
+  cands.forEach(function(c){
+    if(usedS.indexOf(c.s)>-1||usedE.indexOf(c.e)>-1) return;
+    usedS.push(c.s); usedE.push(c.e); out.push(c);
+  });
+  return out;
+}
+function band(sc){ return sc>=70?'strong':(sc>=45?'likely':'weak'); }
+
+function render(){
+  const R=filtered();
+  if(!R.length){ showErr('No line items match those filters.'); return; }
+  clearErr();
+  const dates=uniq(all().map(function(r){return r.day;}).filter(Boolean)).sort();
+  const sel=$('fDate').value;
+  $('stamp').innerHTML='<b>'+(sel?shortDate(sel):(dates.length?shortDate(dates[0])+' \u2013 '+shortDate(dates[dates.length-1]):'\u2014'))+'</b>'+
+    nf(R.length)+' line items in view';
+  $('scopeLine').textContent = sel ? ('Issue date '+shortDate(sel)) : (dates.length+' date'+(dates.length===1?'':'s')+' loaded');
+  renderSummary(R); renderDays(); renderSwaps(); renderCounting(R); renderWho(R); renderLines(R);
+}
+
+function renderSummary(R){
+  const total=R.length, value=R.reduce(function(s,r){return s+r.value;},0);
+  const gps=uniq(R.map(function(r){return r.gp;}).filter(Boolean)).length;
+  const scanner=R.filter(function(r){return r.cls.scanner;});
+  const counting=R.filter(function(r){return r.isCounting;});
+  const swaps=buildSwaps(R).filter(function(c){return c.score>=45;});
+  $('kpis').innerHTML=[
+    card('Total PRS line items',nf(total),nf(gps)+' GPs',''),
+    card('Scanner-related',nf(scanner.length),p0(pct(scanner.length,total))+' of all lines',''),
+    card('Counting mistakes',nf(counting.length),inr(counting.reduce(function(s,r){return s+r.value;},0))+' at stake','flag'),
+    card('Likely swaps',nf(swaps.length),'pairs explained by a tray mix-up','alert')
+  ].join('');
+
+  const B=function(k){return R.filter(function(r){return r.cls.key===k;});};
+  const notGp=B('notingp');
+  const contra=notGp.filter(function(r){return r.cls.leaf==='Contra excess + pure excess';});
+  const unmatched=notGp.filter(function(r){return r.cls.leaf!=='Contra excess + pure excess';});
+  const damage=B('damage'), modif=B('modif'), del=B('deleted');
+  const direct=B('direct'), cnt=B('counting'), rec=B('recomm'), man=B('allman');
+  const nonScan=notGp.length+damage.length+modif.length+del.length;
+  const scan=direct.length+cnt.length+rec.length+man.length;
+  const row=function(c,l,n,x,showPct){
+    const pctTxt = showPct===false ? '' :
+      ' <span style="color:var(--ink-soft);font-weight:400">('+p0(pct(n,total))+')</span>';
+    return '<div class="row '+c+'"><span>'+esc(l)+'</span><span class="dots"></span><span class="val">'+
+      nf(n)+pctTxt+(x?' <span style="color:var(--ink-soft);font-weight:400">'+x+'</span>':'')+'</span></div>';
+  };
+  const label=$('fDate').value?shortDate($('fDate').value):'the loaded period';
+  $('ledger').innerHTML=
+    row('total','Total PRS for '+label,total,inr(value),false)+
+    row('group','Not related to scanner',nonScan,'')+
+    row('sub','A. Item not in GP',notGp.length,'')+
+    row('leaf','Unmatched (sheet print checking)',unmatched.length,'')+
+    row('leaf','Contra excess + pure excess',contra.length,'')+
+    row('sub','B. Fulfilled (damage)',damage.length,'')+
+    row('sub','C. Modification issue / no scan path',modif.length,'')+
+    row('sub','D. Pure excess (deleted)',del.length,'')+
+    row('group','Related to scanner',scan,'')+
+    row('sub','A. Direct scan',direct.length,'video footage to be investigated')+
+    row('sub flagrow','B. Auto modify / direct scan \u2014 counting mistake',cnt.length,'the \u201C+\u201D button')+
+    row('sub','C. Recommendation',rec.length,'')+
+    row('sub','D. All manual',man.length,'');
+
+  const share=function(n){return p1(pct(n,total));};
+  $('paste').value=[
+    'Total PRS for '+label+' - '+total,
+    '*Not related to scanner - '+nonScan+' ('+share(nonScan)+')*',
+    'A. Item not in GP - '+notGp.length+' ('+share(notGp.length)+')',
+    '- Unmatched (sheet print checking) - '+unmatched.length+' ('+share(unmatched.length)+')',
+    '- Contra Excess + Pure Excess - '+contra.length+' ('+share(contra.length)+')',
+    'B. Fulfilled (Damage) - '+damage.length+' ('+share(damage.length)+')',
+    'C. Modification issue (CSV) - '+modif.length+' ('+share(modif.length)+')',
+    'D. Pure excess (Deleted) - '+del.length+' ('+share(del.length)+')',
+    '*Related to Scanner - '+scan+' ('+share(scan)+')*',
+    'A. Direct scan - '+direct.length+' ('+share(direct.length)+') (video footage to be investigated)',
+    'B. Auto Modify / Direct Scan - Counting mistake - Allowing checkers to press "+" button - '+cnt.length+' ('+share(cnt.length)+')',
+    'C. Recommendation - '+rec.length+' ('+share(rec.length)+')',
+    'D. All Manual - '+man.length+' ('+share(man.length)+')',
+    '',
+    'Total error value - '+inr2(value),
+    'Scanner-related share - '+p1(pct(scan,total)),
+    'Likely cross-customer swaps - '+swaps.length+' pairs ('+inr(swaps.reduce(function(s,c){return s+c.value;},0))+')'
+  ].join('\n');
+
+  const ts=tally(R,function(r){return r.source||'(no source recorded)';});
+  let tmax=1; ts.forEach(function(x){if(x.n>tmax)tmax=x.n;});
+  table($('tSource'),
+    [{h:'Source',k:'k'},{h:'Lines',k:'n',num:true},{h:'Share',k:'s',num:true},{h:'',k:'bar',raw:true},{h:'Error value',k:'v',num:true}],
+    ts.map(function(x){return {k:x.k,n:nf(x.n),s:p1(pct(x.n,total)),
+      bar:barCell(x.n,tmax,/MANUAL/i.test(x.k)?'amber':''),v:inr(x.v),
+      _cls:COUNTING.indexOf(x.k.toUpperCase())>-1?'hi':''};}),
+    {foot:{k:'Total',n:nf(total),s:'100.0%',bar:'',v:inr(value)}});
+
+  const mn=R.filter(function(r){return r.isManual;});
+  const vr=R.filter(function(r){return !r.isManual&&r.source;});
+  const no=total-mn.length-vr.length;
+  $('manualPct').textContent=p0(pct(mn.length,total));
+  $('manualSub').textContent=nf(mn.length)+' of '+nf(total)+' lines, worth '+inr(mn.reduce(function(s,r){return s+r.value;},0));
+  $('manualSplit').innerHTML='<i style="background:var(--amber);width:'+pct(mn.length,total)+'%"></i>'+
+    '<i style="background:var(--teal);width:'+pct(vr.length,total)+'%"></i>'+
+    '<i style="background:var(--rule);width:'+pct(no,total)+'%"></i>';
+
+  const ct=tally(R,function(r){return r.ctype||'(blank)';});
+  let cmax=1; ct.forEach(function(x){if(x.n>cmax)cmax=x.n;});
+  table($('tComplaint'),
+    [{h:'Complaint type',k:'k'},{h:'Lines',k:'n',num:true},{h:'',k:'bar',raw:true},{h:'Value',k:'v',num:true}],
+    ct.map(function(x){return {k:x.k,n:nf(x.n),bar:barCell(x.n,cmax),v:inr(x.v)};}));
+
+  const tv=tally(R,function(r){return (r.cls.scanner?'Scanner \u2014 ':'Other \u2014 ')+r.cls.label;})
+    .sort(function(a,b){return b.v-a.v;});
+  let vmax=1; tv.forEach(function(x){if(x.v>vmax)vmax=x.v;});
+  table($('tValue'),
+    [{h:'Classification',k:'k'},{h:'Lines',k:'n',num:true},{h:'Error value',k:'v',num:true},
+     {h:'Share of value',k:'s',num:true},{h:'',k:'bar',raw:true},{h:'Average per line',k:'a',num:true}],
+    tv.map(function(x){return {k:x.k,n:nf(x.n),v:inr(x.v),s:p1(pct(x.v,value)),
+      bar:barCell(x.v,vmax,/counting/i.test(x.k)?'amber':''),a:inr(x.v/x.n),
+      _cls:/counting/i.test(x.k)?'hi':''};}),
+    {foot:{k:'Total',n:nf(total),v:inr(value),s:'100.0%',bar:'',a:inr(value/total)}});
+
+  const tr=tally(R,function(r){return r.region;});
+  let rmax=1; tr.forEach(function(x){if(x.n>rmax)rmax=x.n;});
+  table($('tRegion'),
+    [{h:'Region',k:'k'},{h:'Lines',k:'n',num:true},{h:'Share',k:'s',num:true},{h:'',k:'bar',raw:true},
+     {h:'Counting mistakes',k:'c'},{h:'Error value',k:'v',num:true}],
+    tr.map(function(x){return {k:x.k,n:nf(x.n),s:p1(pct(x.n,total)),bar:barCell(x.n,rmax),
+      c:x.c+' ('+p0(pct(x.c,x.n))+')',v:inr(x.v)};}));
+
+  const noSrc=R.filter(function(r){return !r.source;}).length;
+  const both=R.filter(function(r){return !isNaN(r.scanned)&&!isNaN(r.expected);}).length;
+  const match=R.filter(function(r){return !isNaN(r.scanned)&&!isNaN(r.expected)&&r.scanned===r.expected;}).length;
+  $('dq').innerHTML=[
+    card('System said the quantity was right',both?p0(pct(match,both)):'\u2014',
+      nf(match)+' of '+nf(both)+' lines had scanned equal to expected','flag'),
+    card('No source recorded',nf(noSrc),'cannot be attributed to a scanning path','')
+  ].join('');
+}
+
+function renderDays(){
+  const rg=$('fRegion').value, st=$('fStore').value;
+  const base=all().filter(function(r){return (!rg||r.region===rg)&&(!st||r.store===st);});
+  const dates=uniq(base.map(function(r){return r.day;}).filter(Boolean)).sort();
+  $('daysScope').textContent=dates.length+' date'+(dates.length===1?'':'s');
+  const day=function(d){return base.filter(function(r){return r.day===d;});};
+  if(dates.length<2){
+    $('daysNote').textContent='Load sheets for more than one date to see movement. Everything else on this page still works with a single file.';
+    $('chartTotals').innerHTML=''; $('chartCounting').innerHTML='';
+    table($('tDays'),[{h:'Date',k:'k'}],[]);
+    table($('tCatDays'),[{h:'Category',k:'k'}],[]);
+    table($('tStoreDays'),[{h:'Store',k:'k'}],[]);
+    return;
+  }
+  $('daysNote').textContent='Each date is one loaded sheet. The share of PRS caused by counting mistakes is the number to watch once a control goes live.';
+  const labels=dates.map(shortDate);
+  lineChart($('chartTotals'),[
+    {name:'Total PRS lines',color:'#16232B',data:dates.map(function(d){return day(d).length;})},
+    {name:'Scanner-related',color:'#0F6E6E',data:dates.map(function(d){return day(d).filter(function(r){return r.cls.scanner;}).length;})},
+    {name:'Counting mistakes',color:'#A96A00',data:dates.map(function(d){return day(d).filter(function(r){return r.isCounting;}).length;})}
+  ],labels);
+  lineChart($('chartCounting'),[
+    {name:'Counting mistakes',color:'#A96A00',data:dates.map(function(d){return day(d).filter(function(r){return r.isCounting;}).length;})},
+    {name:'Likely swaps',color:'#5B4B8A',data:dates.map(function(d){return buildSwaps(day(d)).filter(function(c){return c.score>=45;}).length;})}
+  ],labels,{caption:'Swaps are counted within each date here. Widen the window on the swaps tab to catch pairs that cross dates.'});
+
+  const rowsD=dates.map(function(d,i){
+    const R=day(d);
+    const c=R.filter(function(r){return r.isCounting;}).length;
+    const s=R.filter(function(r){return r.cls.scanner;}).length;
+    const v=R.reduce(function(a,r){return a+r.value;},0);
+    let delta='';
+    if(i){
+      const df=R.length-day(dates[i-1]).length;
+      delta='<span class="delta '+(df>0?'up':(df<0?'down':'flat'))+'">'+(df>0?'+':'')+df+'</span>';
+    }
+    return {k:shortDate(d),n:nf(R.length),d:delta,
+      s:nf(s)+' ('+p0(pct(s,R.length))+')',
+      c:nf(c)+' ('+p0(pct(c,R.length))+')',
+      sw:nf(buildSwaps(R).filter(function(x){return x.score>=45;}).length),
+      v:inr(v),a:inr(v/R.length)};
+  });
+  const tot=base.length, totV=base.reduce(function(a,r){return a+r.value;},0);
+  table($('tDays'),
+    [{h:'Date',k:'k'},{h:'Lines',k:'n',num:true},{h:'Change',k:'d',num:true,raw:true},
+     {h:'Scanner-related',k:'s',num:true},{h:'Counting mistakes',k:'c',num:true},
+     {h:'Likely swaps',k:'sw',num:true},{h:'Error value',k:'v',num:true},{h:'Average',k:'a',num:true}],
+    rowsD,
+    {foot:{k:'All dates',n:nf(tot),d:'',
+      s:nf(base.filter(function(r){return r.cls.scanner;}).length),
+      c:nf(base.filter(function(r){return r.isCounting;}).length),
+      sw:'',v:inr(totV),a:inr(totV/tot)}});
+
+  const cats=[['notingp','Item not in GP'],['damage','Fulfilled (damage)'],['modif','Modification / no path'],
+    ['deleted','Pure excess (deleted)'],['direct','Direct scan'],['counting','Counting mistake'],
+    ['recomm','Recommendation'],['allman','All manual']];
+  const cols=[{h:'Category',k:'k'}].concat(dates.map(function(d,i){return {h:shortDate(d),k:'d'+i,num:true};}))
+    .concat([{h:'Total',k:'tot',num:true},{h:'Trend',k:'tr',num:true,raw:true}]);
+  table($('tCatDays'),cols,cats.map(function(pair){
+    const key=pair[0], o={k:pair[1],_cls:key==='counting'?'hi':''};
+    let sum=0;
+    dates.forEach(function(d,i){
+      const n=day(d).filter(function(r){return r.cls.key===key;}).length;
+      o['d'+i]=nf(n); sum+=n;
+    });
+    o.tot=nf(sum);
+    const first=day(dates[0]).filter(function(r){return r.cls.key===key;}).length;
+    const last=day(dates[dates.length-1]).filter(function(r){return r.cls.key===key;}).length;
+    const df=last-first;
+    o.tr='<span class="delta '+(df>0?'up':(df<0?'down':'flat'))+'">'+(df>0?'+':'')+df+'</span>';
+    return o;
+  }));
+
+  const sa={};
+  base.forEach(function(r){
+    if(!sa[r.store]) sa[r.store]={k:r.store,days:{},dn:0,n:0,c:0,v:0};
+    const o=sa[r.store];
+    if(r.day&&!o.days[r.day]){o.days[r.day]=1;o.dn++;}
+    o.n++; o.v+=r.value; if(r.isCounting)o.c++;
+  });
+  const multi=Object.keys(sa).map(function(k){return sa[k];})
+    .filter(function(o){return o.dn>1;}).sort(function(a,b){return b.n-a.n;}).slice(0,25);
+  let smax=1; multi.forEach(function(o){if(o.n>smax)smax=o.n;});
+  table($('tStoreDays'),
+    [{h:'Store',k:'k'},{h:'Dates hit',k:'d',num:true},{h:'Total lines',k:'n',num:true},{h:'',k:'bar',raw:true},
+     {h:'Counting mistakes',k:'c',num:true},{h:'Error value',k:'v',num:true}],
+    multi.map(function(o){return {k:o.k,d:o.dn,n:nf(o.n),bar:barCell(o.n,smax),c:o.c,v:inr(o.v)};}));
+}
+
+['modeInvoice','modeWindow'].forEach(function(id){
+  $(id).addEventListener('click',function(){
+    SWAP_MODE=$(id).dataset.mode;
+    $('modeInvoice').className='btn'+(SWAP_MODE==='invoice'?'':' ghost');
+    $('modeWindow').className='btn'+(SWAP_MODE==='window'?'':' ghost');
+    const onWindow=SWAP_MODE==='window';
+    $('swapDays').disabled=!onWindow;
+    $('swapDaysLbl').style.opacity=onWindow?'1':'.45';
+    renderSwaps();
+  });
+});
+['swapMin','swapDays','swapSearch'].forEach(function(id){
+  $(id).addEventListener('input',function(){renderSwaps();});
+});
+function renderSwaps(){
+  const R=swapPool();
+  const mode=SWAP_MODE;
+  SWAPS=buildSwaps(R,mode);
+  const minS=+$('swapMin').value, maxGap=mode==='invoice'?999:+$('swapDays').value, q=norm($('swapSearch').value);
+  const view=SWAPS.filter(function(c){
+    return c.score>=minS && c.gap<=maxGap &&
+      (!q||norm(c.s.product).indexOf(q)>-1||norm(c.s.store).indexOf(q)>-1||norm(c.e.store).indexOf(q)>-1);
+  });
+  const strong=SWAPS.filter(function(c){return c.score>=70;});
+  const likely=SWAPS.filter(function(c){return c.score>=45;});
+  const overlapping=SWAPS.filter(function(c){return c.overlap;});
+  const shorts=R.filter(function(r){return isShort(r.ctype);}).length;
+  const withInvDate=R.filter(function(r){return r.invDate;}).length;
+
+  $('swapModeNote').textContent = mode==='invoice'
+    ? 'Matches lines that share the exact same Invoice Date \u2014 the case where a checker crossed two trays on the same day. Needs the "Invoice Date" column (YYYY-MM-DD) on both lines.'
+    : 'Matches lines regardless of date, scored down the further apart they are \u2014 for reconciling inventory quantity across a longer window.';
+  $('swapScope').textContent=nf(R.length)+' lines examined across '+nf(FILES.length)+' file'+(FILES.length===1?'':'s');
+
+  $('swapKpis').innerHTML=[
+    card('Strong matches',nf(strong.length),'same product and batch, quantities agree','alert'),
+    card('Likely matches',nf(likely.length),p0(pct(likely.length,Math.max(1,shorts)))+' of all short-item lines','alert'),
+    card('Value in matched pairs',inr(likely.reduce(function(s,c){return s+c.value;},0)),'counted once per pair',''),
+    mode==='invoice'
+      ? card('Overlapping scan time',nf(overlapping.length),'both lines were being checked at the same time','')
+      : card('Products involved',nf(uniq(likely.map(function(c){return c.s.pkey;})).length),'distinct products crossing customers','')
+  ].join('');
+
+  if(mode==='invoice' && !withInvDate){
+    $('swapCallout').innerHTML = 'None of the loaded lines have an <b>Invoice Date</b> value. Add an "Invoice Date" column '+
+      '(format YYYY-MM-DD) to the sheet to enable same-day swap matching, or switch to <b>Multiple dates stock swap</b> above.';
+  } else {
+    $('swapCallout').innerHTML = likely.length
+      ? '<b>'+likely.length+' pairs</b> look like stock that went to the wrong customer rather than stock that was miscounted. '+
+        'Each pair is one short complaint and one excess complaint that cancel out, so up to '+likely.length+
+        ' of your short-item PRS may have nothing to do with counting at all. Confirm a few against tray photos or footage before reclassifying.'
+      : (mode==='invoice'
+          ? 'No convincing same-invoice-date pairs in this selection. Try Multiple dates stock swap, or load more files \u2014 the matching pair can sit in a different upload.'
+          : 'No convincing pairs in this selection. Widen the date window or load more dates \u2014 a swap often shows up on the neighbouring day.');
+  }
+
+  const dtCol = mode==='invoice' ? {h:'Invoice date',k:'dt'} : {h:'Dates',k:'dt'};
+  const cols=[{h:'Confidence',k:'cf',raw:true},{h:'Product',k:'p'},{h:'Batch',k:'b'},
+     {h:'Short \u2014 invoice',k:'si'},{h:'Short \u2014 store',k:'ss'},{h:'Qty',k:'sq',num:true},
+     {h:'Excess \u2014 invoice',k:'ei'},{h:'Excess \u2014 store',k:'es'},{h:'Qty',k:'eq',num:true},
+     dtCol];
+  if(mode==='invoice') cols.push({h:'Time overlap',k:'ov'});
+  cols.push({h:'Checker',k:'ck'},{h:'Matched on',k:'w'},{h:'Value',k:'v',num:true});
+
+  table($('tSwap'), cols,
+    view.slice(0,300).map(function(c){
+      const sameBatch=c.s.batch&&norm(c.s.batch)===norm(c.e.batch);
+      const ov = !c.s.st||!c.s.et||!c.e.st||!c.e.et ? 'Unknown (missing times)'
+        : (c.overlap ? 'Yes \u00b7 '+fmtTime(c.s.st)+'\u2013'+fmtTime(c.s.et)+' \u2194 '+fmtTime(c.e.st)+'\u2013'+fmtTime(c.e.et) : 'No');
+      return {
+        cf:'<span class="pill '+band(c.score)+'">'+band(c.score)+' '+c.score+'</span>',
+        p:c.s.product,
+        b:sameBatch?c.s.batch:((c.s.batch||'\u2014')+' / '+(c.e.batch||'\u2014')),
+        si:c.s.invoice,ss:c.s.store,sq:isNaN(c.s.prsQty)?'\u2014':c.s.prsQty,
+        ei:c.e.invoice,es:c.e.store,eq:isNaN(c.e.prsQty)?'\u2014':c.e.prsQty,
+        dt: mode==='invoice' ? (c.s.invDate?shortDate(c.s.invDate):'\u2014')
+            : shortDate(c.s.day)+(c.s.day===c.e.day?'':' \u2192 '+shortDate(c.e.day)),
+        ov:ov,
+        ck:c.s.checker===c.e.checker?c.s.checker:(c.s.checker+' / '+c.e.checker),
+        w:c.why.join(', ')||'product only',
+        v:inr(c.value),
+        _cls:c.score>=70?'vi':''
+      };
+    }));
+
+  const pm={};
+  view.forEach(function(c){
+    if(!pm[c.s.pkey]) pm[c.s.pkey]={k:c.s.product,n:0,v:0,st:{},sn:0};
+    const o=pm[c.s.pkey]; o.n++; o.v+=c.value;
+    [c.s.store,c.e.store].forEach(function(s){if(!o.st[s]){o.st[s]=1;o.sn++;}});
+  });
+  const pl=Object.keys(pm).map(function(k){return pm[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,20);
+  let pmax=1; pl.forEach(function(o){if(o.n>pmax)pmax=o.n;});
+  table($('tSwapProd'),
+    [{h:'Product',k:'k'},{h:'Pairs',k:'n',num:true},{h:'',k:'bar',raw:true},
+     {h:'Customers involved',k:'s',num:true},{h:'Value',k:'v',num:true}],
+    pl.map(function(o){return {k:o.k,n:o.n,bar:barCell(o.n,pmax,'violet'),s:o.sn,v:inr(o.v)};}));
+
+  const sm={};
+  view.forEach(function(c){
+    const a=[c.s.store,c.e.store].sort(), k=a.join(' \u21C4 ');
+    if(!sm[k]) sm[k]={k:k,n:0,v:0,pr:{},pn:0};
+    const o=sm[k]; o.n++; o.v+=c.value;
+    if(!o.pr[c.s.pkey]){o.pr[c.s.pkey]=1;o.pn++;}
+  });
+  const sl=Object.keys(sm).map(function(k){return sm[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,20);
+  let smx=1; sl.forEach(function(o){if(o.n>smx)smx=o.n;});
+  table($('tSwapStore'),
+    [{h:'Store pair',k:'k'},{h:'Pairs',k:'n',num:true},{h:'',k:'bar',raw:true},
+     {h:'Products',k:'p',num:true},{h:'Value',k:'v',num:true}],
+    sl.map(function(o){return {k:o.k,n:o.n,bar:barCell(o.n,smx,'violet'),p:o.pn,v:inr(o.v)};}));
+
+  $('swapCsv').onclick=function(){
+    const head=['Mode','Confidence','Score','Product','Short batch','Excess batch','Short invoice','Short store','Short qty',
+      'Excess invoice','Excess store','Excess qty','Short invoice date','Excess invoice date','Short file date','Excess file date',
+      'Time overlap','Short checker','Excess checker','Matched on','Value'];
+    const body=view.map(function(c){
+      const ov = !c.s.st||!c.s.et||!c.e.st||!c.e.et ? 'unknown' : (c.overlap?'yes':'no');
+      return [mode,band(c.score),c.score,c.s.product,c.s.batch,c.e.batch,
+      c.s.invoice,c.s.store,c.s.prsQty,c.e.invoice,c.e.store,c.e.prsQty,c.s.invDate,c.e.invDate,c.s.day,c.e.day,
+      ov,c.s.checker,c.e.checker,c.why.join('; '),c.value];
+    });
+    dl('prs-swaps.csv',[head].concat(body).map(function(r){return r.map(csvCell).join(',');}).join('\n'));
+  };
+}
+
+$('simQty').addEventListener('input',renderSim);
+$('simSec').addEventListener('input',renderSim);
+function renderCounting(R){
+  const C=R.filter(function(r){return r.isCounting;});
+  window.__C=C;
+  $('cmCount').textContent=nf(C.length)+' lines \u00B7 '+inr(C.reduce(function(s,r){return s+r.value;},0));
+  const bands=[{l:'1',t:function(q){return q===1;}},{l:'2',t:function(q){return q===2;}},
+    {l:'3',t:function(q){return q===3;}},{l:'4 to 5',t:function(q){return q>=4&&q<=5;}},
+    {l:'6 to 10',t:function(q){return q>=6&&q<=10;}},{l:'11 to 20',t:function(q){return q>=11&&q<=20;}},
+    {l:'more than 20',t:function(q){return q>20;}}];
+  const known=C.filter(function(r){return r.qty>0;});
+  let maxN=1;
+  bands.forEach(function(b){const n=known.filter(function(r){return b.t(r.qty);}).length; if(n>maxN)maxN=n;});
+  let cum=0;
+  table($('tBands'),
+    [{h:'Required qty',k:'k'},{h:'Lines',k:'n',num:true},{h:'Share',k:'s',num:true},{h:'',k:'bar',raw:true},
+     {h:'Error value',k:'v',num:true},{h:'Running',k:'c',num:true}],
+    bands.map(function(b){
+      const set=known.filter(function(r){return b.t(r.qty);});
+      cum+=set.length;
+      return {k:b.l,n:nf(set.length),s:p1(pct(set.length,known.length)),bar:barCell(set.length,maxN,'amber'),
+        v:inr(set.reduce(function(s,r){return s+r.value;},0)),c:p0(pct(cum,known.length)),
+        _cls:(set.length===maxN&&set.length>0)?'hi':''};
+    }),
+    {foot:{k:'Total',n:nf(known.length),s:'100.0%',bar:'',
+      v:inr(known.reduce(function(s,r){return s+r.value;},0)),c:''}});
+
+  const low=known.filter(function(r){return r.qty<=3;}).length;
+  let top={l:'\u2014',n:0};
+  bands.forEach(function(b){const n=known.filter(function(r){return b.t(r.qty);}).length; if(n>top.n) top={l:b.l,n:n};});
+  $('cmCallout').innerHTML = known.length
+    ? 'The largest band is a required quantity of <b>'+esc(top.l)+'</b> with '+top.n+
+      ' lines. Quantities of three or fewer account for <b>'+low+' of '+known.length+' lines</b> ('+
+      p0(pct(low,known.length))+') \u2014 a control that only triggers on large quantities would miss most of this bucket.'
+    : 'No required quantity recorded on these lines, so the bands cannot be built.';
+
+  const dirs=[{k:'Short \u2014 customer received fewer',t:isShort},{k:'Excess \u2014 customer received more',t:isExcess},
+    {k:'Damage',t:function(t){return /damage/i.test(t);}},
+    {k:'Other',t:function(t){return !/short|excess|damage/i.test(t);}}];
+  let dmax=1;
+  dirs.forEach(function(d){const n=C.filter(function(r){return d.t(r.ctype);}).length; if(n>dmax)dmax=n;});
+  table($('tDirection'),
+    [{h:'Direction',k:'k'},{h:'Lines',k:'n',num:true},{h:'Share',k:'s',num:true},{h:'',k:'bar',raw:true},{h:'Value',k:'v',num:true}],
+    dirs.map(function(d){
+      const set=C.filter(function(r){return d.t(r.ctype);});
+      return {k:d.k,n:nf(set.length),s:p1(pct(set.length,C.length)),
+        bar:barCell(set.length,dmax,/Excess/.test(d.k)?'red':'amber'),
+        v:inr(set.reduce(function(s,r){return s+r.value;},0))};
+    }));
+  renderSim(); renderTiming(C);
+}
+function renderSim(){
+  const C=window.__C||[];
+  const q=+$('simQty').value, sec=+$('simSec').value/10;
+  $('simQtyOut').textContent=q; $('simSecOut').textContent=sec.toFixed(1);
+  const byQ=C.filter(function(r){return r.qty>1&&r.qty<=q;});
+  const byS=C.filter(function(r){return !(r.qty>1&&r.qty<=q)&&r.perUnit!=null&&r.perUnit<sec;});
+  const caught=byQ.length+byS.length;
+  const val=byQ.reduce(function(s,r){return s+r.value;},0)+byS.reduce(function(s,r){return s+r.value;},0);
+  $('simOut').innerHTML='<div class="big">'+caught+' of '+C.length+' lines</div>'+
+    'would have been stopped before dispatch \u2014 '+p0(pct(caught,C.length||1))+' of this bucket, worth <b>'+inr(val)+'</b>.'+
+    '<div style="margin-top:8px;font-size:13.5px;color:var(--ink-soft)">Full scan rule catches '+byQ.length+
+    '. Minimum handling time catches a further '+byS.length+'. '+(C.length-caught)+' would still get through.</div>';
+}
+function renderTiming(C){
+  const t=C.filter(function(r){return r.perUnit!=null;});
+  if(!t.length){$('timing').innerHTML='<p class="note">No usable start and end times on these lines.</p>';return;}
+  const s=t.map(function(r){return r.perUnit;}).sort(function(a,b){return a-b;});
+  const med=s[Math.floor(s.length/2)];
+  const zero=t.filter(function(r){return r.dur===0;}).length;
+  const L=function(l,v){
+    return '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--rule-soft);font-size:14px">'+
+      '<span>'+esc(l)+'</span><b>'+esc(v)+'</b></div>';
+  };
+  $('timing').innerHTML=
+    L('Lines with usable timestamps',t.length+' of '+C.length)+
+    L('Median seconds per unit handled',med.toFixed(2)+' s')+
+    L('Completed in zero seconds',zero+' ('+p0(pct(zero,t.length))+')')+
+    L('Under one second per unit',t.filter(function(r){return r.perUnit<1;}).length)+
+    L('Under half a second per unit',t.filter(function(r){return r.perUnit<0.5;}).length)+
+    '<p class="note" style="margin-top:11px">A line that closes in under a second per unit cannot have involved physically counting those units.</p>';
+}
+
+function renderWho(R){
+  const dates=uniq(R.map(function(r){return r.day;}).filter(Boolean)).length;
+  const mk=function(el,fn,head){
+    const m={};
+    R.forEach(function(r){
+      const k=fn(r);
+      if(!m[k]) m[k]={k:k,n:0,c:0,v:0,days:{},dn:0};
+      const o=m[k]; o.n++; o.v+=r.value; if(r.isCounting)o.c++;
+      if(r.day&&!o.days[r.day]){o.days[r.day]=1;o.dn++;}
+    });
+    const t=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,30);
+    let max=1; t.forEach(function(x){if(x.n>max)max=x.n;});
+    let cols=[{h:head,k:'k'},{h:'Lines',k:'n',num:true},{h:'',k:'bar',raw:true},
+      {h:'Counting mistakes',k:'c',num:true},{h:'Rate',k:'r',num:true}];
+    if(dates>1) cols=cols.concat([{h:'Dates seen',k:'d',num:true},{h:'Per date',k:'pd',num:true}]);
+    cols=cols.concat([{h:'Error value',k:'v',num:true}]);
+    table($(el),cols,t.map(function(x){
+      return {k:x.k,n:nf(x.n),bar:barCell(x.n,max),c:x.c,r:p0(pct(x.c,x.n)),
+        d:x.dn,pd:(x.n/Math.max(1,x.dn)).toFixed(1),v:inr(x.v),
+        _cls:(x.c>=Math.max(3,max*0.25))?'hi':''};
+    }));
+  };
+  mk('tChecker',function(r){return r.checker;},'Checker');
+  mk('tProduct',function(r){return r.product;},'Product');
+  mk('tStore',function(r){return r.store;},'Store');
+}
+
+['lineSearch','lineCls'].forEach(function(id){
+  $(id).addEventListener('input',function(){renderLines(filtered());});
+});
+function renderLines(R){
+  const cls=uniq(R.map(function(r){return r.cls.label;})).sort();
+  const cur=$('lineCls').value;
+  $('lineCls').innerHTML='<option value="">All classifications</option>'+
+    cls.map(function(c){return '<option'+(c===cur?' selected':'')+'>'+esc(c)+'</option>';}).join('');
+  const q=norm($('lineSearch').value), cf=$('lineCls').value;
+  const view=R.filter(function(r){
+    if(cf&&r.cls.label!==cf) return false;
+    if(!q) return true;
+    return norm(r.product).indexOf(q)>-1||norm(r.invoice).indexOf(q)>-1||norm(r.batch).indexOf(q)>-1||
+           norm(r.checker).indexOf(q)>-1||norm(r.store).indexOf(q)>-1||norm(r.ticket).indexOf(q)>-1;
+  });
+  $('lineCount').textContent=nf(view.length)+' of '+nf(R.length)+' lines';
+  table($('tLines'),
+    [{h:'Date',k:'d'},{h:'Invoice',k:'i'},{h:'Product',k:'p'},{h:'Batch',k:'b'},{h:'Complaint',k:'ct'},
+     {h:'PRS qty',k:'q',num:true},{h:'Scanned',k:'sc',num:true},{h:'Expected',k:'ex',num:true},
+     {h:'Source',k:'s'},{h:'Classification',k:'cl'},{h:'Checker',k:'ch'},{h:'Store',k:'st'},{h:'Value',k:'v',num:true}],
+    view.slice(0,600).map(function(r){
+      return {d:shortDate(r.day),i:r.invoice,p:r.product,b:r.batch||'\u2014',ct:r.ctype,
+        q:isNaN(r.prsQty)?'\u2014':r.prsQty,sc:isNaN(r.scanned)?'\u2014':r.scanned,
+        ex:isNaN(r.expected)?'\u2014':r.expected,s:r.source||'\u2014',cl:r.cls.label,
+        ch:r.checker,st:r.store,v:inr(r.value),_cls:r.isCounting?'hi':''};
+    }));
+  $('lineCsv').onclick=function(){
+    const head=['Date','GP','Ticket','Invoice','Product','Batch','Complaint type','Act qty','PRS qty',
+      'Scanned qty','Expected qty','Source','Line status','Classification','Scanner related','Counting mistake',
+      'Checker','Store','Region','Seconds','Seconds per unit','Error value'];
+    const body=view.map(function(r){return [r.day,r.gp,r.ticket,r.invoice,r.product,r.batch,r.ctype,
+      r.actQty,r.prsQty,r.scanned,r.expected,r.source,r.status,r.cls.label,r.cls.scanner?'Yes':'No',
+      r.isCounting?'Yes':'No',r.checker,r.store,r.region,r.dur==null?'':r.dur,
+      r.perUnit==null?'':r.perUnit.toFixed(2),r.value];});
+    dl('prs-line-items.csv',[head].concat(body).map(function(x){return x.map(csvCell).join(',');}).join('\n'));
+  };
+}
+
+$('copy').addEventListener('click',function(){
+  const ta=$('paste'); ta.select(); ta.setSelectionRange(0,99999);
+  const done=function(){const b=$('copy');b.textContent='Copied';setTimeout(function(){b.textContent='Copy summary';},1600);};
+  if(navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done,function(){document.execCommand('copy');done();});
+  else {document.execCommand('copy');done();}
+});
 </script>
 </body>
 </html>
